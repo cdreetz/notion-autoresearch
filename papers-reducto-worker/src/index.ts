@@ -7,10 +7,8 @@ import { j } from "@notionhq/workers/schema-builder";
 import Reducto from "reductoai";
 import type { Client } from "@notionhq/client";
 
-const PAPERS_DATA_SOURCE_ID =
-  process.env.PAPERS_DATA_SOURCE_ID ?? "362be921-e5ee-8052-a915-000b02431b1d";
-const RESEARCH_DATA_SOURCE_ID =
-  process.env.RESEARCH_DATA_SOURCE_ID ?? "362be921-e5ee-807e-be94-000b3dfef08b";
+const PAPERS_DATA_SOURCE_ID = requiredEnv("PAPERS_DATA_SOURCE_ID");
+const RESEARCH_DATA_SOURCE_ID = requiredEnv("RESEARCH_DATA_SOURCE_ID");
 
 const PROPS = {
   title: "Title",
@@ -2503,4 +2501,12 @@ function clampResearchLimit(limit: number): number {
     return 5;
   }
   return Math.min(Math.floor(limit), 12);
+}
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
 }

@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "environment": "prod",
+  "workspaceId": "<your-notion-workspace-id>",
+  "workerId": "<your-worker-id>"
+}

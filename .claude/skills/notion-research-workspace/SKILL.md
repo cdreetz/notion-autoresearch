@@ -11,10 +11,10 @@ Use this workspace as both a human UI and an agent tool surface.
 
 - Repo: `/Users/christian/dev/my-notion/papers-reducto-worker`
 - Worker: `papers-reducto-worker`
-- Worker ID: `019e32a8-1a1f-796a-a1a9-97f7e1148480`
-- Papers data source: `362be921-e5ee-8052-a915-000b02431b1d`
-- Research Database data source: `362be921-e5ee-807e-be94-000b3dfef08b`
-- Research Database URL: `https://www.notion.so/362be921e5ee8091a047de24661229bc`
+- Runtime IDs are not stored in this public skill. Read them from private env/config:
+  - `PAPERS_DATA_SOURCE_ID`
+  - `RESEARCH_DATA_SOURCE_ID`
+  - worker identity from `ntn workers get` or `workers.json` if present locally
 
 The single Notion connection webhook should point at the worker's `paperChanged` URL. Do not create separate Notion subscriptions per database unless Notion supports that in the future. `paperChanged` dispatches by page parent:
 
@@ -71,6 +71,13 @@ ntn workers exec processReadyResearchIdeas -d '{"limit":1,"dryRun":false}'
 
 Use `jq -nc` to build JSON payloads; it avoids quoting mistakes with Notion property names containing spaces. Use `:=` only for typed inline `ntn api` arguments; with `-d`, pass normal JSON.
 
+Before direct page creation commands, load private IDs into the shell:
+
+```sh
+export PAPERS_DATA_SOURCE_ID=...
+export RESEARCH_DATA_SOURCE_ID=...
+```
+
 Inside worker code, use the Notion SDK client from the capability context:
 
 ```ts
@@ -109,7 +116,7 @@ Example:
 ```sh
 cd /Users/christian/dev/my-notion/papers-reducto-worker
 payload=$(jq -nc '{
-  parent:{data_source_id:"362be921-e5ee-8052-a915-000b02431b1d"},
+  parent:{data_source_id:env.PAPERS_DATA_SOURCE_ID},
   properties:{
     Title:{title:[{type:"text",text:{content:"Paper title"}}]},
     PDF:{files:[{name:"paper.pdf",type:"external",external:{url:"https://arxiv.org/pdf/0000.00000"}}]},
@@ -149,7 +156,7 @@ Example:
 ```sh
 cd /Users/christian/dev/my-notion/papers-reducto-worker
 payload=$(jq -nc '{
-  parent:{data_source_id:"362be921-e5ee-807e-be94-000b3dfef08b"},
+  parent:{data_source_id:env.RESEARCH_DATA_SOURCE_ID},
   properties:{
     Title:{title:[{type:"text",text:{content:"Multimodal RL for long-horizon visual agents"}}]},
     Prompt:{rich_text:[{type:"text",text:{content:"I am curious about visual perception, planning, tool use, and RL in multimodal agents."}}]},
