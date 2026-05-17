@@ -1,29 +1,29 @@
 ---
 name: notion-research-workspace
-description: "Use when Codex needs to operate Christian's Notion research system: add papers to the Papers database, add or review research ideas in the Research Database, trigger/inspect the papers-reducto-worker, explain the webhook/tool architecture, or help agents use the Notion workspace as shared research memory."
+description: "Operate Christian's Notion research system — add papers to the Papers database, add or review ideas in the Research Database, trigger or inspect the papers-reducto-worker, explain the webhook/tool architecture, and use the Notion workspace as shared research memory across agents."
 ---
 
-# Notion Research Workspace
+# Notion research workspace
 
-## System Map
+The workspace is both a human UI and an agent tool surface. The active architecture is **webhook + tool driven** — do not add a sync capability unless the user explicitly asks for one.
 
-Use this workspace as both a human UI and an agent tool surface.
+## System map
 
 - Repo: `/Users/christian/dev/my-notion/papers-reducto-worker`
 - Worker: `papers-reducto-worker`
 - Runtime IDs are not stored in this public skill. Read them from private env/config:
   - `PAPERS_DATA_SOURCE_ID`
   - `RESEARCH_DATA_SOURCE_ID`
-  - worker identity from `ntn workers get` or `workers.json` if present locally
+  - Worker identity from `ntn workers get` or a local `workers.json` if present.
 
-The single Notion connection webhook should point at the worker's `paperChanged` URL. Do not create separate Notion subscriptions per database unless Notion supports that in the future. `paperChanged` dispatches by page parent:
+The single Notion connection webhook should point at the worker's `paperChanged` URL. Don't create separate Notion subscriptions per database unless Notion adds support for that. `paperChanged` dispatches by page parent:
 
-- `Papers` row -> PDF extraction and profile enrichment.
-- `Research Database` row -> research proposal review.
+- `Papers` row → PDF extraction and profile enrichment.
+- `Research Database` row → research proposal review.
 
 Reducto separately calls `reductoParseComplete` when async PDF parsing finishes.
 
-## Worker Capabilities
+## Worker capabilities
 
 List live capabilities before debugging:
 
@@ -34,17 +34,17 @@ ntn workers webhooks list
 ntn workers sync status --json --no-watch
 ```
 
-Expected capabilities:
+Expected:
 
 - Webhooks: `paperChanged`, `reductoParseComplete`, optional `researchIdeaChanged`.
 - Tools: `processPendingPapers`, `processPaperById`, `writeMarkdownFromReductoJob`, `draftResearchProposal`, `reviewResearchIdeaById`, `processReadyResearchIdeas`.
-- Sync status should be `[]`; this system is webhook/tool driven, not sync driven.
+- Sync status should be `[]` — this system is webhook/tool driven, not sync driven.
 
-Do not print full worker webhook URLs in final answers unless the user explicitly asks. They contain secret path tokens.
+Don't print full worker webhook URLs in final answers unless the user asks. They contain secret path tokens.
 
-## Notion CLI And SDK
+## Notion CLI and SDK
 
-Prefer the `ntn` CLI for direct workspace operations from an agent. It uses the configured Notion auth and keeps requests reproducible.
+Prefer the `ntn` CLI for direct workspace operations from an agent — it uses configured Notion auth and keeps requests reproducible.
 
 Common CLI patterns:
 
@@ -69,9 +69,9 @@ ntn api -X PATCH v1/pages/PAGE_ID -d "$payload"
 ntn workers exec processReadyResearchIdeas -d '{"limit":1,"dryRun":false}'
 ```
 
-Use `jq -nc` to build JSON payloads; it avoids quoting mistakes with Notion property names containing spaces. Use `:=` only for typed inline `ntn api` arguments; with `-d`, pass normal JSON.
+Build JSON payloads with `jq -nc` — it avoids quoting mistakes with Notion property names containing spaces. Use `:=` only for typed inline `ntn api` arguments; with `-d`, pass normal JSON.
 
-Before direct page creation commands, load private IDs into the shell:
+Before direct page creation, load private IDs into the shell:
 
 ```sh
 export PAPERS_DATA_SOURCE_ID=...
@@ -98,11 +98,11 @@ await context.notion.pages.updateMarkdown({
 });
 ```
 
-For deployed webhooks and other non-agent-triggered capabilities, `context.notion` needs the worker env `NOTION_API_TOKEN`; tools invoked by Custom Agents may be pre-authenticated, but this project still sets the token explicitly for reliability.
+For deployed webhooks and other non-agent-triggered capabilities, `context.notion` needs the worker env `NOTION_API_TOKEN`. Tools invoked by Custom Agents may be pre-authenticated, but this project sets the token explicitly for reliability.
 
-## Add A Paper
+## Add a paper
 
-Use this when the user asks to save/add/track a paper. Prefer a stable public PDF URL, such as an arXiv PDF URL. If the user gives an abstract page, derive the PDF URL when obvious.
+When the user asks to save, add, or track a paper, prefer a stable public PDF URL (e.g. an arXiv PDF). If they give an abstract page, derive the PDF URL when obvious.
 
 Create a `Papers` row with:
 
@@ -127,7 +127,7 @@ payload=$(jq -nc '{
 ntn api -X POST v1/pages -d "$payload"
 ```
 
-The Notion webhook should trigger extraction automatically. If it does not, run:
+The Notion webhook should trigger extraction automatically. If it doesn't, run:
 
 ```sh
 ntn workers exec processPendingPapers -d '{"limit":1,"includeFailed":false,"dryRun":false}'
@@ -140,11 +140,9 @@ ntn api -X GET v1/pages/PAGE_ID |
   jq '{title:(.properties.Title.title|map(.plain_text)|join("")), extraction:.properties["Extraction Status"].status.name, profile:.properties["Profile Status"].status.name, markdown:.properties["Markdown Page"].url, error:.properties["Review Error"]?}'
 ```
 
-## Add A Research Idea
+## Add a research idea
 
-Use this when the user says they are curious/interested in a direction or asks for a proposal grounded in their paper library.
-
-Create a `Research Database` row with:
+When the user says they're curious about a direction or asks for a proposal grounded in their paper library, add a `Research Database` row with:
 
 - `Title`: short research direction.
 - `Prompt`: user context, questions, hypotheses, or constraints.
@@ -167,13 +165,13 @@ payload=$(jq -nc '{
 ntn api -X POST v1/pages -d "$payload"
 ```
 
-The webhook should process it automatically. If it does not, run:
+The webhook should process it automatically. If not:
 
 ```sh
 ntn workers exec processReadyResearchIdeas -d '{"limit":1,"dryRun":false}'
 ```
 
-The worker updates:
+When the review finishes, the worker fills in:
 
 - `Agent Summary`
 - `Open Questions`
@@ -184,17 +182,17 @@ The worker updates:
 - `Status = Done`
 - `Review Requested = unchecked`
 
-## On-Demand Proposal Tool
+## On-demand proposal tool
 
-When the user wants a proposal without creating a Research Database row, call:
+When the user wants a proposal without creating a Research Database row:
 
 ```sh
 ntn workers exec draftResearchProposal -d '{"idea":"research idea here","maxPapers":5,"parentPageId":null}'
 ```
 
-If the user wants the proposal written into Notion under a specific page, set `parentPageId` to that page ID.
+To write the proposal into Notion under a specific page, set `parentPageId` to that page ID.
 
-## Review Or Reprocess Existing Rows
+## Review or reprocess existing rows
 
 Paper:
 
@@ -214,13 +212,13 @@ Backfill markdown/profile from an existing completed Reducto parse job:
 ntn workers exec writeMarkdownFromReductoJob -d '{"pageId":"PAGE_ID","jobId":"REDUCTO_JOB_ID"}'
 ```
 
-## Debugging Rules
+## Debugging
 
-- First check row fields in Notion, then worker runs.
+- Check row fields in Notion first, then worker runs.
 - `Review Requested` must be checked to intentionally trigger a research review.
 - `Extraction Status` must be `Not Started` for normal paper extraction.
-- The Notion connector must have access to both databases.
-- Worker env should include `NOTION_API_TOKEN`, `REDUCTO_API_KEY`, `REDUCTO_WEBHOOK_URL`, and `RESEARCH_DATA_SOURCE_ID`.
-- Do not add syncs. The active architecture is webhook events plus manual/agent tools.
-- If Notion only allows one connection webhook URL, use `paperChanged`; it routes both databases.
-- If a webhook accepts a request with HTTP 202 but the row does not update immediately, wait briefly and inspect `ntn workers runs list` and `ntn workers runs logs RUN_ID`.
+- The Notion connector needs access to both databases.
+- Worker env must include `NOTION_API_TOKEN`, `REDUCTO_API_KEY`, `REDUCTO_WEBHOOK_URL`, and `RESEARCH_DATA_SOURCE_ID`.
+- Don't add syncs. The architecture is webhook events plus manual/agent tools.
+- If Notion only allows one connection webhook URL, use `paperChanged` — it routes both databases.
+- If a webhook accepts a request with HTTP 202 but the row doesn't update immediately, wait briefly and inspect `ntn workers runs list` and `ntn workers runs logs RUN_ID`.
