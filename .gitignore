@@ -1,12 +1,2 @@
 papers-reducto-worker/workers.json
 notion-hackathon/
-.agents/skills/auth-guide/
-.agents/skills/sync/
-.agents/skills/sync-debug/
-.agents/skills/sync-guide/
-.agents/skills/sync-validate/
-.claude/skills/auth-guide/
-.claude/skills/sync/
-.claude/skills/sync-debug/
-.claude/skills/sync-guide/
-.claude/skills/sync-validate/

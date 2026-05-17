@@ -1,4 +1,0 @@
-interface:
-  display_name: "Notion Research Workspace"
-  short_description: "Use the Notion Papers and Research Database workflow."
-  default_prompt: "Use the Notion research workspace to add papers, request research reviews, inspect worker status, and explain the automation."
